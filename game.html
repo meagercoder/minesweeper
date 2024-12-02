@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minesweeper</title>
+    <link rel="stylesheet" href="game.css">
+</head>
+<body>
+
+<div id="controls">
+    <label for="board-size">Board Size</label>
+    <select id="board-size">
+        <option value="easy">Easy</option>
+        <option value="medium">Medium</option>
+        <option value="difficult">Difficult</option>
+    </select>
+    <label for="mine-count">Mine Count</label>
+    <input type="number" id="mine-count" value="10" min="1">
+    <button id="start-button">Start</button>
+    <button id="restart-button" disabled>Restart</button>
+    <div id="timer">Time: 0</div>
+    <div>
+        <label>
+            <input type="checkbox" id="flag-toggle">
+            Flag Mode
+        </label>
+    </div>
+</div>
+
+<div id="game-board" class="easy"></div>
+
+<script src="game.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,147 @@
+/* Basic Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Body and general page styles */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+/* Controls Section */
+#controls {
+    background-color: #fff;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    width: 300px;
+}
+
+#controls label {
+    font-size: 14px;
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
+}
+
+#controls select,
+#controls input[type="number"],
+#controls button {
+    width: 100%;
+    padding: 10px;
+    margin: 5px 0;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+#controls button {
+    background-color: #4CAF50;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    border: none;
+}
+
+#controls button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+#controls button:hover:not(:disabled) {
+    background-color: #45a049;
+}
+
+#timer {
+    font-size: 20px;
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+/* Game Board Styling */
+#game-board {
+    display: grid;
+    gap: 2px;
+    margin: 20px auto;
+    border: 2px solid #333;
+    background-color: #999;
+}
+
+/* Game Board Grid for Easy, Medium, Difficult */
+#game-board.easy {
+    grid-template-columns: repeat(9, 1fr);
+    grid-template-rows: repeat(9, 1fr);
+}
+
+#game-board.medium {
+    grid-template-columns: repeat(16, 1fr);
+    grid-template-rows: repeat(16, 1fr);
+}
+
+#game-board.difficult {
+    grid-template-columns: repeat(30, 1fr);
+    grid-template-rows: repeat(16, 1fr);
+}
+
+/* Cell Styling */
+.cell {
+    width: 30px;
+    height: 30px;
+    border: 1px solid #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #eee;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s ease;
+}
+
+.cell.revealed {
+    background-color: #ddd;
+    cursor: default;
+}
+
+.cell.flagged {
+    background-color: #f0f0c0;
+    color: red;
+}
+
+/* Win/Lose Message */
+.win-message, .lose-message {
+    font-size: 24px;
+    font-weight: bold;
+    margin-top: 20px;
+    text-align: center;
+}
+
+.win-message {
+    color: green;
+}
+
+.lose-message {
+    color: red;
+}
+
+#controls label input[type="checkbox"] {
+    margin-right: 5px;
+}
+
+#flag-toggle {
+    margin-top: 10px;
+    transform: scale(1.2);
+    cursor: pointer;
+}
