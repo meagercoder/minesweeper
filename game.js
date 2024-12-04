@@ -239,19 +239,19 @@ function endGame(won) {
 }
 
 function saveScore(score, timePlayed, difficulty) {
-    fetch('save_score.php', {
+    fetch('save_game_history.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: `score=${score}&time_played=${timePlayed}&difficulty=${difficulty}`
+        body: `score=${score}&time_played=${timePlayed}&difficulty=${difficulty}&won=${gameOver ? 1 : 0}`
     })
     .then(response => response.text())
     .then(data => {
         if (data === "success") {
-            console.log("Score saved successfully.");
+            console.log("Game history saved successfully.");
         } else {
-            console.error("Error saving score:", data);
+            console.error("Error saving game history:", data);
         }
     })
     .catch(error => console.error("Network error:", error));
