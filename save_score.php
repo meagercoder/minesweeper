@@ -1,50 +1,56 @@
 <?php
+// Start the session
 session_start();
 
-// Check if the user is logged in
+// Enable error reporting to help diagnose issues (for debugging only, remove in production)
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+// Check if session data is available (e.g., user is logged in)
 if (!isset($_SESSION['user_id'])) {
-    echo "error: not logged in";
+    echo json_encode(["status" => "error", "message" => "User not logged in."]);
     exit;
 }
 
-// Handle the POST request
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Include the database connection
-    include 'dbh.inc.php'; // Ensure $conn is properly set up in this file
+// Retrieve the session data (e.g., user ID)
+$user_id = $_SESSION['user_id'];
 
-    // Retrieve and sanitize input
-    $user_id = intval($_SESSION['user_id']); // Get the user ID from the session
-    $score = isset($_POST['score']) ? intval($_POST['score']) : 0; // Ensure score is an integer
-    $time_played = isset($_POST['time_played']) ? intval($_POST['time_played']) : 0; // Time in seconds
-    $difficulty = isset($_POST['difficulty']) ? $_POST['difficulty'] : 'unknown'; // Default to 'unknown'
+// Check if required POST data exists
+if (isset($_POST['won'], $_POST['time_played'], $_POST['difficulty'], $_POST['moves'])) {
+    $won = $_POST['won'];
+    $time_played = $_POST['time_played'];
+    $difficulty = $_POST['difficulty'];
+    $moves = $_POST['moves'];
 
-    // Validate difficulty input
-    $valid_difficulties = ['easy', 'medium', 'difficult'];
-    if (!in_array($difficulty, $valid_difficulties)) {
-        echo "error: invalid difficulty";
+    // Sanitize and validate inputs (though PDO already handles this for SQL)
+    if (!is_numeric($time_played) || !is_numeric($moves) || !in_array($difficulty, ['easy', 'medium', 'difficult'])) {
+        echo json_encode(["status" => "error", "message" => "Invalid input data."]);
         exit;
     }
 
-    // Prepare SQL statement to insert the score, time, and difficulty
-    $stmt = $conn->prepare("INSERT INTO leaderboard (user_id, score, time_played, difficulty) VALUES (?, ?, ?, ?)");
-    if ($stmt === false) {
-        echo "error: failed to prepare statement";
-        exit;
+    try {
+        // Establish the database connection
+        $pdo = new PDO('mysql:host=localhost;dbname=minesweeper', 'root', '');
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        // Prepare SQL statement to insert the game history
+        $stmt = $pdo->prepare("INSERT INTO game_history (user_id, won, time_played, difficulty, moves) 
+                               VALUES (?, ?, ?, ?, ?)");
+
+        // Execute the statement with the session user ID and other game data
+        $stmt->execute([$user_id, $won, $time_played, $difficulty, $moves]);
+
+        // Return a success response
+        echo json_encode(["status" => "success", "message" => "Game history saved successfully!"]);
+    } catch (PDOException $e) {
+        // Log the error to a file for debugging purposes
+        error_log($e->getMessage(), 3, '/var/log/php_errors.log');
+
+        // Return a generic error message
+        echo json_encode(["status" => "error", "message" => "Database error, please try again later."]);
     }
-
-    $stmt->bind_param("iiis", $user_id, $score, $time_played, $difficulty);
-
-    // Execute the query
-    if ($stmt->execute()) {
-        echo "success"; // Indicate that the score was saved successfully
-    } else {
-        echo "error: could not save score"; // Handle execution errors
-    }
-
-    // Close statement and connection
-    $stmt->close();
-    $conn->close();
 } else {
-    echo "error: invalid request method"; // Ensure only POST requests are accepted
+    // Return an error if required POST data is missing
+    echo json_encode(["status" => "error", "message" => "Error: Missing required POST data."]);
 }
 ?>

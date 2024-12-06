@@ -1,64 +1,45 @@
 <?php
-// Include database connection
-include_once 'includes/dbh.inc.php';
+session_start();
 
-// Set headers to return JSON
-header('Content-Type: application/json');
+if (!isset($_SESSION['user_id'])) {
+    echo json_encode(["error" => "User not logged in."]);
+    exit;
+}
+
+if (isset($_GET['difficulty'])) {
+    $difficulty = $_GET['difficulty'];
+} else {
+    echo json_encode(["error" => "Difficulty parameter missing."]);
+    exit;
+}
+
+// Check if the sort parameter is passed, default to 'wins'
+$sort = isset($_GET['sort']) ? $_GET['sort'] : 'wins';
+$sortColumn = ($sort === 'time') ? 'MIN(gh.time_played)' : 'COUNT(*)';
+$sortOrder = ($sort === 'time') ? 'ASC' : 'DESC';
 
 try {
-    // Connect to the database
-    $conn = new mysqli($servername, $username, $password, $dbname);
+    $pdo = new PDO('mysql:host=localhost;dbname=minesweeper', 'root', '');
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    // Check connection
-    if ($conn->connect_error) {
-        throw new Exception("Connection failed: " . $conn->connect_error);
-    }
+    // Fetch leaderboard data for the requested difficulty
+    $stmt = $pdo->prepare("
+        SELECT u.username, COUNT(*) AS wins, MIN(gh.time_played) AS best_time
+        FROM game_history gh
+        JOIN users u ON gh.user_id = u.id
+        WHERE gh.difficulty = :difficulty
+        GROUP BY u.username
+        ORDER BY $sortColumn $sortOrder
+        LIMIT 5
+    ");
+    $stmt->bindParam(':difficulty', $difficulty, PDO::PARAM_STR);
+    $stmt->execute();
+    $leaderboard = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // SQL query to fetch top 10 leaderboard entries
-    $sql = "
-        SELECT 
-            users.username, 
-            game_history.score, 
-            game_history.time_played, 
-            game_history.difficulty 
-        FROM 
-            game_history 
-        INNER JOIN 
-            users 
-        ON 
-            game_history.user_id = users.id 
-        ORDER BY 
-            game_history.score DESC, game_history.time_played ASC 
-        LIMIT 10;
-    ";
-
-    // Execute the query
-    $result = $conn->query($sql);
-
-    // Check for errors
-    if (!$result) {
-        throw new Exception("Query failed: " . $conn->error);
-    }
-
-    // Fetch the data as an associative array
-    $leaderboard = [];
-    while ($row = $result->fetch_assoc()) {
-        $leaderboard[] = [
-            'username' => htmlspecialchars($row['username']),
-            'score' => (int)$row['score'],
-            'time' => (int)$row['time_played'],
-            'difficulty' => htmlspecialchars($row['difficulty']),
-        ];
-    }
-
-    // Output the JSON-encoded data
+    // Return the data as JSON
     echo json_encode($leaderboard);
 
-} catch (Exception $e) {
-    // Handle errors and send an error response
-    http_response_code(500);
-    echo json_encode(['error' => $e->getMessage()]);
-} finally {
-    // Close the connection
-    $conn->close();
+} catch (PDOException $e) {
+    echo json_encode(["error" => "Database error: " . $e->getMessage()]);
 }
+?>

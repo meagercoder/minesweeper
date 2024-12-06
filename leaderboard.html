@@ -8,45 +8,131 @@
 </head>
 <body>
 
-    <div id="leaderboard-container">
-        <h1>Minesweeper Leaderboard</h1>
-        <table id="leaderboard">
+<div id="leaderboard-container">
+    <h1>Minesweeper Leaderboard</h1>
+    <button id="back-button" onclick="window.location.href='home.php'">Home</button>
+
+    <!-- Sorting Controls -->
+    <div class="sorting-controls">
+        <label for="sort-order">Sort By: </label>
+        <select id="sort-order" onchange="updateLeaderboardSort()">
+            <option value="wins">Most Wins</option>
+            <option value="time">Best Time</option>
+        </select>
+    </div>
+
+    <!-- Easy Leaderboard -->
+    <div class="leaderboard-section">
+        <h2>Easy</h2>
+        <table class="leaderboard" id="leaderboard-easy" aria-label="Easy Leaderboard">
             <thead>
                 <tr>
                     <th>Rank</th>
                     <th>Player</th>
-                    <th>Score</th>
-                    <th>Time</th>
-                    <th>Difficulty</th>
+                    <th>Wins</th>
+                    <th>Best Time</th>
                 </tr>
             </thead>
             <tbody>
-                <!-- Leaderboard entries will be inserted here dynamically -->
+                <!-- Easy leaderboard entries will be populated dynamically -->
             </tbody>
         </table>
-        <button id="back-button" onclick="window.location.href='home.php'">Home</button>
     </div>
 
-    <script>
-        // Fetch and display leaderboard data
-        fetch('get_leaderboard.php')
+    <!-- Medium Leaderboard -->
+    <div class="leaderboard-section">
+        <h2>Medium</h2>
+        <table class="leaderboard" id="leaderboard-medium" aria-label="Medium Leaderboard">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Player</th>
+                    <th>Wins</th>
+                    <th>Best Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Medium leaderboard entries will be populated dynamically -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Difficult Leaderboard -->
+    <div class="leaderboard-section">
+        <h2>Difficult</h2>
+        <table class="leaderboard" id="leaderboard-difficult" aria-label="Difficult Leaderboard">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Player</th>
+                    <th>Wins</th>
+                    <th>Best Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Difficult leaderboard entries will be populated dynamically -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let currentSort = 'wins'; // Default sorting is by wins
+
+    // Function to update the sorting criteria based on user selection
+    function updateLeaderboardSort() {
+        const sortOrder = document.getElementById('sort-order').value;
+        currentSort = sortOrder;  // Set the current sort to the selected value
+
+        // Re-fetch the leaderboard with the updated sorting
+        populateLeaderboard('easy', 'leaderboard-easy');
+        populateLeaderboard('medium', 'leaderboard-medium');
+        populateLeaderboard('difficult', 'leaderboard-difficult');
+    }
+
+    // Function to format time as MM:SS
+    function formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+
+    // Function to populate leaderboard for a specific difficulty
+    function populateLeaderboard(difficulty, tableId) {
+        const leaderboardTable = document.querySelector(`#${tableId} tbody`);
+        leaderboardTable.innerHTML = `<tr id="${difficulty}-loading"><td colspan="4">Loading...</td></tr>`; // Show loading
+
+        // Fetch leaderboard data with the selected sorting option
+        fetch(`get_leaderboard.php?difficulty=${difficulty}&sort=${currentSort}`)
             .then(response => response.json())
             .then(data => {
-                const leaderboardTable = document.querySelector('#leaderboard tbody');
+                leaderboardTable.innerHTML = ""; // Clear loading message
+                if (data.length === 0) {
+                    leaderboardTable.innerHTML = `<tr><td colspan="4">No data available</td></tr>`;
+                    return;
+                }
                 data.forEach((entry, index) => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${index + 1}</td>
                         <td>${entry.username}</td>
-                        <td>${entry.score}</td>
-                        <td>${entry.time}</td>
-                        <td>${entry.difficulty}</td>
+                        <td>${entry.wins}</td>
+                        <td>${formatTime(entry.best_time)}</td>
                     `;
                     leaderboardTable.appendChild(row);
                 });
             })
-            .catch(error => console.error('Error fetching leaderboard:', error));
-    </script>
+            .catch(error => {
+                console.error(`Error fetching ${difficulty} leaderboard:`, error);
+                leaderboardTable.innerHTML = `<tr><td colspan="4">Error loading leaderboard</td></tr>`;
+            });
+    }
+
+    // Initial population of leaderboards for all difficulties
+    populateLeaderboard('easy', 'leaderboard-easy');
+    populateLeaderboard('medium', 'leaderboard-medium');
+    populateLeaderboard('difficult', 'leaderboard-difficult');
+</script>
 
 </body>
 </html>

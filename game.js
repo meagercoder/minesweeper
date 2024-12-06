@@ -6,12 +6,14 @@ let timerInterval;
 let gameStarted = false;
 let gameOver = false;
 let remainingCells;
-let correctlyFlagged = 0;
-let elapsedTime = 0;
+let correctlyFlagged = 0; // Track correctly flagged mines
 let difficulty = "easy";
+let alertShown = false;
+let elapsedTime = 0; // Declare elapsedTime globally
+let stepCount = 0;
 
 const boardElement = document.getElementById("game-board");
-const mineInput = document.getElementById("mine-count");
+const mineInputElement = document.getElementById("mine-count");
 const timerDisplay = document.getElementById("timer");
 const startButton = document.getElementById("start-button");
 const restartButton = document.getElementById("restart-button");
@@ -19,12 +21,17 @@ const boardSizeSelector = document.getElementById("board-size");
 const flagToggle = document.getElementById("flag-toggle");
 
 // Timer
+function resetTimerDisplay() {
+    timerDisplay.textContent = "Time: 0";
+}
+
 function startTimer() {
     stopTimer(); // Clear any previous timer
-    elapsedTime = 0;
-    timerDisplay.textContent = `Time: ${elapsedTime}`;
+    elapsedTime = 0; // Reset the global elapsedTime
+    resetTimerDisplay();
     timerInterval = setInterval(() => {
-        timerDisplay.textContent = `Time: ${++elapsedTime}`;
+        elapsedTime++; // Update the global elapsedTime
+        timerDisplay.textContent = `Time: ${elapsedTime}`;
     }, 1000);
 }
 
@@ -53,15 +60,15 @@ boardSizeSelector.addEventListener("change", (e) => {
         difficulty = "difficult";
     }
 
-    mineInput.max = rows * cols - 1;
-    mineInput.value = mineCount;
+    mineInputElement.max = rows * cols - 1;
+    mineInputElement.value = mineCount;
     if (gameStarted) {
         restartGame();
     }
 });
 
 // Mine Count Input
-mineInput.addEventListener("change", (e) => {
+mineInputElement.addEventListener("change", (e) => {
     const input = parseInt(e.target.value, 10);
     mineCount = Math.max(1, Math.min(input, rows * cols - 1));
     e.target.value = mineCount;
@@ -82,8 +89,9 @@ restartButton.addEventListener("click", () => {
 function startGame() {
     gameStarted = true;
     gameOver = false;
+    alertShown = false;
     remainingCells = rows * cols - mineCount;
-    correctlyFlagged = 0;
+    correctlyFlagged = 0; // Reset correctly flagged mines
 
     startTimer();
 
@@ -91,15 +99,18 @@ function startGame() {
     renderBoard();
 
     restartButton.disabled = false;
+    //console.log("Game started!");
 }
 
 function restartGame() {
     gameStarted = false;
+    gameOver = false;
     stopTimer();
-    elapsedTime = 0;
-    timerDisplay.textContent = "Time: 0";  // Reset timer display
-    boardElement.innerHTML = "";
-    //startGame();
+    resetTimerDisplay();
+    boardElement.innerHTML = ""; // Clear the board
+    flagToggle.checked = false; // Reset flag mode
+    alertShown = false;
+    //console.log("Game restarted!");
 }
 
 function generateBoard() {
@@ -123,6 +134,7 @@ function generateBoard() {
     }
 
     calculateAdjacentMines();
+    //console.log("Board generated!");
 }
 
 function calculateAdjacentMines() {
@@ -166,6 +178,8 @@ function renderBoard() {
             boardElement.appendChild(cell);
         }
     }
+
+    //console.log("Board rendered!");
 }
 
 function handleCellClick(row, col) {
@@ -179,29 +193,37 @@ function handleCellClick(row, col) {
 function revealCell(row, col) {
     if (gameOver || board[row][col].revealed || board[row][col].flagged) return;
 
+    stepCount++;
+
     board[row][col].revealed = true;
     const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
     cell.classList.add("revealed");
 
     if (board[row][col].mine) {
         cell.textContent = "💣";
-        endGame(false);
+        //console.log("Game lost! Mine revealed.");
+        endGame(false); // End game on mine reveal
+        setTimeout(restartGame, 2000); // Restart after 2 seconds
         return;
     }
 
+    // Show the number of adjacent mines, or an empty space
     cell.textContent = board[row][col].adjacentMines || "";
     remainingCells--;
 
-    if (remainingCells === 0) {
-        endGame(true);
-    }
+    checkGameStatus(); // Check the win/loss status after each move
 
+    // If there are no adjacent mines, recursively reveal surrounding cells
     if (board[row][col].adjacentMines === 0) {
         for (let dr = -1; dr <= 1; dr++) {
             for (let dc = -1; dc <= 1; dc++) {
                 const nr = row + dr;
                 const nc = col + dc;
+                // Ensure we stay within bounds
                 if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+                    // Skip the current cell
+                    if (nr === row && nc === col) continue;
+                    // Recursively reveal surrounding cells
                     revealCell(nr, nc);
                 }
             }
@@ -209,8 +231,17 @@ function revealCell(row, col) {
     }
 }
 
+function checkGameStatus() {
+    if (remainingCells === 0 && correctlyFlagged === mineCount) {
+        // All cells revealed and all mines flagged correctly
+        endGame(true); // End game on win
+    }
+}
+
 function toggleFlag(row, col) {
     if (gameOver || board[row][col].revealed) return;
+
+    stepCount++;
 
     board[row][col].flagged = !board[row][col].flagged;
     const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
@@ -222,37 +253,38 @@ function toggleFlag(row, col) {
         correctlyFlagged--;
     }
 
+    checkGameStatus(); // Check if all mines are flagged correctly
+
     if (correctlyFlagged === mineCount && remainingCells === 0) {
-        endGame(true);
+        //console.log("Game won! All mines correctly flagged.");
+        endGame(true); // End game on correct flags
+    }
+}
+
+function revealAllMines() {
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            const cell = document.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
+            if (board[r][c].mine && !board[r][c].flagged) {
+                cell.textContent = "💣";
+                cell.classList.add("mine");
+            } else if (!board[r][c].mine && board[r][c].flagged) {
+                cell.classList.add("wrong-flag");
+            }
+        }
     }
 }
 
 function endGame(won) {
+    if (alertShown) return;
+    alertShown = true;
+
     gameOver = true;
     stopTimer();
 
-    const score = won ? remainingCells * 10 : 0; // Example scoring formula
+    revealAllMines();
     alert(won ? "You win!" : "You lose!");
 
-    // Save the score to the database
-    saveScore(score, elapsedTime, difficulty);
-}
-
-function saveScore(score, timePlayed, difficulty) {
-    fetch('save_game_history.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `score=${score}&time_played=${timePlayed}&difficulty=${difficulty}&won=${gameOver ? 1 : 0}`
-    })
-    .then(response => response.text())
-    .then(data => {
-        if (data === "success") {
-            console.log("Game history saved successfully.");
-        } else {
-            console.error("Error saving game history:", data);
-        }
-    })
-    .catch(error => console.error("Network error:", error));
+    //console.log("End game called. Saving history...");
+    saveGameHistory(won, elapsedTime, difficulty, stepCount); // Pass stepCount here
 }

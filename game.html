@@ -7,30 +7,130 @@
     <link rel="stylesheet" href="game.css">
 </head>
 <body>
-<button id="back-button" onclick="window.location.href='home.php'">Home</button>
-<div id="controls">
-    <label for="board-size">Board Size</label>
-    <select id="board-size">
-        <option value="easy">Easy</option>
-        <option value="medium">Medium</option>
-        <option value="difficult">Difficult</option>
-    </select>
-    <label for="mine-count">Mine Count</label>
-    <input type="number" id="mine-count" value="10" min="1">
-    <button id="start-button">Start</button>
-    <button id="restart-button" disabled>Restart</button>
-    <div id="timer">Time: 0</div>
-    <div>
-        <label>
-            <input type="checkbox" id="flag-toggle">
-            Flag Mode
-        </label>
+    <!-- Navigation Button to Home Page -->
+    <button id="back-button" onclick="window.location.href='home.php'">Home</button>
+
+    <div id="controls">
+        <!-- Board Size Controls -->
+        <label for="board-size">Board Size</label>
+        <select id="board-size">
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="difficult">Difficult</option>
+        </select>
+        
+        <!-- Mine Count Input -->
+        <label for="mine-count">Mine Count</label>
+        <input type="number" id="mine-count" value="10" min="1">
+        
+        <!-- Control Buttons -->
+        <button id="start-button">Start</button>
+        <button id="restart-button" disabled>Restart</button>
+        
+        <!-- Timer & Step Counter -->
+        <div id="timer">Time: 0</div>
+        <div id="step-counter">Steps: 0</div>
+        
+        <!-- Flag Mode Toggle -->
+        <div>
+            <label>
+                <input type="checkbox" id="flag-toggle"> Flag Mode
+            </label>
+        </div>
     </div>
-</div>
 
-<div id="game-board" class="easy"></div>
+    <!-- Game Board Container -->
+    <div id="game-board" class="easy"></div>
 
-<script src="game.js"></script>
+    <!-- Hidden Inputs to Store Game Data -->
+    <input type="hidden" id="win-status">
+    <input type="hidden" id="game-time">
+    <input type="hidden" id="difficulty">
+    <input type="hidden" id="steps">
 
+    <!-- Game Result Message Display -->
+    <div id="game-message"></div>
+
+    <script src="game.js"></script>
+
+    <script>
+        // Ensure the game variables are initialized in the JavaScript file.
+        let gameWon = false;
+        let elapsedTime = 0;
+        let difficulty = document.getElementById('board-size').value; 
+        let stepCount = 0;
+
+        // Update hidden difficulty input when the user changes the board size
+        document.getElementById('board-size').addEventListener('change', function() {
+            const difficulty = this.value;
+            document.getElementById('difficulty').value = difficulty;
+        });
+
+        // Reset the game when the Start button is clicked
+        document.getElementById('start-button').addEventListener('click', function() {
+            elapsedTime = 0;
+            gameWon = false;
+            stepCount = 0;
+            document.getElementById('win-status').value = 0;
+            document.getElementById('game-time').value = 0;
+            document.getElementById('steps').value = 0;
+            document.getElementById('step-counter').textContent = "Steps: 0";
+        });
+
+        // Increment step count as the game progresses
+        function incrementStepCount() {
+            stepCount++;
+            document.getElementById('steps').value = stepCount;
+            document.getElementById('step-counter').textContent = `Steps: ${stepCount}`;
+        }
+
+        // Check if the player has won or lost and trigger the endGame function
+        function checkGameStatus() {
+            if (playerHasWon()) {
+                endGame(true);
+            } else if (playerHasLost()) {
+                endGame(false);
+            }
+        }
+
+        // Handle game end and save the history
+        function endGame(won) {
+            gameWon = won;
+            document.getElementById('win-status').value = won ? 1 : 0;
+            document.getElementById('game-time').value = elapsedTime;
+            document.getElementById('steps').value = stepCount;
+
+            saveGameHistory(); // Save the game history when the game ends
+        }
+
+        // Save the game data to the backend
+        function saveGameHistory() {
+            const winStatus = document.getElementById('win-status').value;
+            const timePlayed = document.getElementById('game-time').value;
+            const difficulty = document.getElementById('difficulty').value;
+            const steps = document.getElementById('steps').value;
+
+            fetch('save_score.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `won=${winStatus}&time_played=${timePlayed}&difficulty=${difficulty}&moves=${steps}`
+            })
+            .then(response => response.text())
+            .then(data => {
+                const messageElement = document.getElementById('game-message');
+                if (data === "success") {
+                    messageElement.textContent = "Game history saved successfully!";
+                } else {
+                    messageElement.textContent = `Error saving game history: ${data}`;
+                }
+            })
+            .catch(error => {
+                document.getElementById('game-message').textContent = "Network error. Please try again.";
+                console.error("Network error:", error);
+            });
+        }
+    </script>
 </body>
 </html>
